@@ -59,16 +59,16 @@ void readData()
         angle = read_angle;
         speed = read_speed;
 
-        Serial.print("Success angle:");
-        Serial.print(angle);
-        Serial.print(", speed:");
-        Serial.print(speed);
-        Serial.print('\n');
+        // Serial.print("Success angle:");
+        // Serial.print(angle);
+        // Serial.print(", speed:");
+        // Serial.print(speed);
+        // Serial.print('\n');
       }
       else
       {
         partNum = 0;
-        Serial.print("Error\n");
+        // Serial.print("Error\n");
       }
 
     default:

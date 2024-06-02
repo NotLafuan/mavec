@@ -7,6 +7,8 @@ ser = serial.Serial('/dev/ttyACM0', 56700)
 stop_thread = False
 
 # Define a function to be executed in a separate thread
+
+
 def print_numbers():
     global stop_thread, ser
     text = ''
@@ -18,7 +20,7 @@ def print_numbers():
         print(text)
         text = ''
 
-    
+
 # Create threads for each function
 thread1 = threading.Thread(target=print_numbers)
 
@@ -29,14 +31,14 @@ thread1.start()
 print('Waiting 1 second...')
 time.sleep(1)
 angle = 90
-speed = 0
-for i in range(5):
-    ser.write(b'\x00')
+speed = 44
 print('start')
-ser.write(b'A')
-ser.write(angle.to_bytes(1))
-ser.write(speed.to_bytes(1))
-ser.write(b'B')
+# ser.write(b'A')
+# ser.write(angle.to_bytes(1))
+# ser.write(speed.to_bytes(1))
+# ser.write(b'B')
+data = b'\x00'*5+b'A'+angle.to_bytes(1)+speed.to_bytes(1)+b'B'
+ser.write(data)
 time.sleep(0.5)
 print('finished')
 

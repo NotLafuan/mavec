@@ -3,35 +3,22 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 import serial
-import threading
-import time
 
 cap = cv2.VideoCapture(0)
 ser = serial.Serial('/dev/ttyACM0', 56700)
-stop_thread = False
 ratio = 0.5
-top_crop = 300 # 230
+top_crop = 230
 
 angle = 90
 speed = 0
 
 
-def send_data():
-    global stop_thread, ser, angle, speed
-    while not stop_thread:
-        try:
-            clamped_angle = int(np.clip(angle, 70, 110))
-            clamped_speed = int(np.clip(speed, 0, 255))
-            for i in range(5):
-                ser.write(b'\x00')
-            ser.write(b'A')
-            ser.write(clamped_angle.to_bytes(1, 'little'))
-            ser.write(clamped_speed.to_bytes(1, 'little'))
-            ser.write(b'B')
-            time.sleep(0.5)
-        except ValueError as e:
-            print(e)
-    ser.close()
+def send_data_normal():
+    clamped_angle = int(np.clip(angle, 70, 110))
+    clamped_speed = int(np.clip(speed, 0, 255))
+    data = b'\x00'*5+b'A' + \
+        clamped_angle.to_bytes(1)+clamped_speed.to_bytes(1)+b'B'
+    ser.write(data)
 
 
 def order_points(pts):
@@ -108,11 +95,6 @@ def map_value(x: float,  in_min: float,  in_max: float,  out_min: float,  out_ma
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
 
 
-thread = threading.Thread(target=send_data)
-print('Thread started')
-thread.start()
-
-# frame = cv2.imread('test2.png')
 while True:
     start_time = time.time()
     ret, frame = cap.read()
@@ -153,6 +135,8 @@ while True:
 
     speed = map_value(abs(steer_amount), 0, 0.5, 120, 50)
 
+    send_data_normal()
+
     cv2.imshow("frame", frame_vis)
     cv2.imshow("warped", warped)
     cv2.imshow("binary", binary)
@@ -163,11 +147,6 @@ while True:
 
     print(f'\rfps: {1/(time.time()-start_time):>6.2f} angle: {angle:>5.2f} speed: {speed:>6.2f}', end='')
 print()
-
-stop_thread = True
-thread.join()
-if not ser.closed:
-    ser.close()
 
 cv2.destroyAllWindows()
 cap.release()
