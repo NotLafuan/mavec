@@ -1,41 +1,64 @@
 #include <Arduino.h>
 
-int part_num = 0;
-int angle = 0;
+#include <motor.h>
+#include <Servo.h>
+
+#include "config.h"
+
+void readData();
+
+int partNum = 0;
+int angle = 90;
 int speed = 0;
+int read_angle = 0;
+int read_speed = 0;
+
+Motor motor(MOTORA, MOTORB);
+Servo servo;
 
 void setup()
 {
   Serial.begin(57600);
+  servo.attach(SERVO_PIN);
 }
 
 void loop()
 {
+  readData();
+  servo.write(angle);
+  motor.setSpeed(speed);
+}
+
+void readData()
+{
   if (Serial.available() > 0)
   {                                    // Check if data is available to read
     char receivedChar = Serial.read(); // Read the incoming byte
-    switch (part_num)
+    switch (partNum)
     {
     case 0:
       if (receivedChar == 'A')
-        part_num++;
+        partNum++;
       else
       {
-        part_num = 0;
+        partNum = 0;
       }
       break;
     case 1:
-      angle = receivedChar;
-      part_num++;
+      read_angle = receivedChar;
+      partNum++;
       break;
     case 2:
-      speed = receivedChar;
-      part_num++;
+      read_speed = receivedChar;
+      partNum++;
       break;
     case 3:
       if (receivedChar == 'B')
       {
-        part_num = 0;
+        partNum = 0;
+        angle = read_angle;
+        speed = read_speed;
+
         Serial.print("Success angle:");
         Serial.print(angle);
         Serial.print(", speed:");
@@ -44,7 +67,7 @@ void loop()
       }
       else
       {
-        part_num = 0;
+        partNum = 0;
         Serial.print("Error\n");
       }
 

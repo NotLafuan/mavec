@@ -28,8 +28,8 @@ thread1.start()
 
 print('Waiting 1 second...')
 time.sleep(1)
-angle = 70
-speed = 44
+angle = 90
+speed = 0
 for i in range(5):
     ser.write(b'\x00')
 print('start')
@@ -44,7 +44,7 @@ print('finished')
 stop_thread = True
 for i in range(5):
     time.sleep(1)
-    ser.write(b'\x00')
+    ser.write(b'AAAA')
 thread1.join()
 ser.close()
 print("Both threads have finished execution.")
