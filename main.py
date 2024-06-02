@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+import time
 
 cap = cv2.VideoCapture(0)
 
@@ -80,12 +81,13 @@ def image_binary(img):
 
 # frame = cv2.imread('test2.png')
 while True:
+    start_time = time.time()
     ret, frame = cap.read()
     frame = cv2.flip(frame, 0)
     
     height, width, channels = frame.shape
-    pts = np.array([[(width/2)-(width/2)*ratio, 200],
-                    [(width/2)+(width/2)*ratio, 200],
+    pts = np.array([[(width/2)-(width/2)*ratio, 230],
+                    [(width/2)+(width/2)*ratio, 230],
                     [width, height],
                     [0, height]], np.int32)
 
@@ -116,11 +118,12 @@ while True:
                      thickness=10)
     cv2.imshow("steer", steer)
     steer_amout = (cog - (width / 2)) / width
-    print(steer_amout)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
+    print(f'\rfps: {1/(time.time()-start_time)}', end='')
+print()
 
 cv2.destroyAllWindows()
 cap.release()
