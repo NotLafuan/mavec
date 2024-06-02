@@ -2,11 +2,36 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+import serial
+import threading
+import time
 
 cap = cv2.VideoCapture(0)
-
-
+ser = serial.Serial('/dev/ttyACM0', 56700)
+stop_thread = False
 ratio = 0.5
+top_crop = 300 # 230
+
+angle = 90
+speed = 0
+
+
+def send_data():
+    global stop_thread, ser, angle, speed
+    while not stop_thread:
+        try:
+            clamped_angle = int(np.clip(angle, 70, 110))
+            clamped_speed = int(np.clip(speed, 0, 255))
+            for i in range(5):
+                ser.write(b'\x00')
+            ser.write(b'A')
+            ser.write(clamped_angle.to_bytes(1, 'little'))
+            ser.write(clamped_speed.to_bytes(1, 'little'))
+            ser.write(b'B')
+            time.sleep(0.5)
+        except ValueError as e:
+            print(e)
+    ser.close()
 
 
 def order_points(pts):
@@ -79,51 +104,70 @@ def image_binary(img):
     return thresh1
 
 
+def map_value(x: float,  in_min: float,  in_max: float,  out_min: float,  out_max: float):
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+
+
+thread = threading.Thread(target=send_data)
+print('Thread started')
+thread.start()
+
 # frame = cv2.imread('test2.png')
 while True:
     start_time = time.time()
     ret, frame = cap.read()
     frame = cv2.flip(frame, 0)
-    
+
     height, width, channels = frame.shape
-    pts = np.array([[(width/2)-(width/2)*ratio, 230],
-                    [(width/2)+(width/2)*ratio, 230],
+    pts = np.array([[(width/2)-(width/2)*ratio, top_crop],
+                    [(width/2)+(width/2)*ratio, top_crop],
                     [width, height],
                     [0, height]], np.int32)
 
     frame_vis = frame.copy()
-    cv2.polylines(frame_vis, [pts], isClosed=True, color=(0,0,125), thickness=3)
-    cv2.imshow("frame", frame_vis)
+    cv2.polylines(frame_vis, [pts], isClosed=True,
+                  color=(0, 0, 125), thickness=3)
 
     warped = four_point_transform(frame, pts)
-    cv2.imshow("warped", warped)
 
     binary = image_binary(warped)
-    cv2.imshow("binary", binary)
 
     hist = np.sum(binary, axis=0)
     dist = np.array(range(len(hist)))
     cog = np.sum(np.matmul(hist, dist))/np.sum(hist)
+    if np.isnan(cog):
+        cog = width/2
 #    fig, ax = plt.subplots()
 #    ax.plot(hist)
 #    fig.canvas.draw()
 #    img_plot = np.array(fig.canvas.renderer.buffer_rgba())
 
 #    cv2.imshow("histogram", cv2.cvtColor(img_plot, cv2.COLOR_RGBA2BGR))
-
     steer = cv2.line(cv2.cvtColor(binary, cv2.COLOR_GRAY2BGR),
                      (int(cog), binary.shape[0]),
                      (int(cog), binary.shape[0]-10),
                      color=(0, 255, 0),
                      thickness=10)
+    steer_amount = -(cog - (width / 2)) / width
+    angle = map_value(steer_amount, -0.4, 0.4, 70, 110)
+
+    speed = map_value(abs(steer_amount), 0, 0.5, 120, 50)
+
+    cv2.imshow("frame", frame_vis)
+    cv2.imshow("warped", warped)
+    cv2.imshow("binary", binary)
     cv2.imshow("steer", steer)
-    steer_amout = (cog - (width / 2)) / width
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
-    print(f'\rfps: {1/(time.time()-start_time)}', end='')
+    print(f'\rfps: {1/(time.time()-start_time):>6.2f} angle: {angle:>5.2f} speed: {speed:>6.2f}', end='')
 print()
+
+stop_thread = True
+thread.join()
+if not ser.closed:
+    ser.close()
 
 cv2.destroyAllWindows()
 cap.release()

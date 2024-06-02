@@ -10,8 +10,8 @@ void readData();
 int partNum = 0;
 int angle = 90;
 int speed = 0;
-int read_angle = 0;
-int read_speed = 0;
+byte read_angle = 0;
+byte read_speed = 0;
 
 Motor motor(MOTORA, MOTORB);
 Servo servo;
@@ -33,7 +33,7 @@ void readData()
 {
   if (Serial.available() > 0)
   {                                    // Check if data is available to read
-    char receivedChar = Serial.read(); // Read the incoming byte
+    byte receivedChar = Serial.read(); // Read the incoming byte
     switch (partNum)
     {
     case 0:
