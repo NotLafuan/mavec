@@ -4,9 +4,9 @@ class Motor
 {
 private:
 public:
-    int leftPin;
-    int rightPin;
-    Motor(int leftPin, int rightPin);
+    int pwmPin;
+    int dirPin;
+    Motor(int pwmPin, int dirPin);
     ~Motor();
-    void setSpeed(int);
+    void setSpeed(int, int);
 };

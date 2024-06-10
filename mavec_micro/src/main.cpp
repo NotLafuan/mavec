@@ -10,10 +10,12 @@ void readData();
 int partNum = 0;
 int angle = 90;
 int speed = 0;
+int dir = 0;
 byte read_angle = 0;
 byte read_speed = 0;
+byte read_dir = 0;
 
-Motor motor(MOTORA, MOTORB);
+Motor motor(MOTOR_PWM, MOTOR_DIR);
 Servo servo;
 
 void setup()
@@ -26,7 +28,7 @@ void loop()
 {
   readData();
   servo.write(angle);
-  motor.setSpeed(speed);
+  motor.setSpeed(speed, dir);
 }
 
 void readData()
@@ -53,11 +55,16 @@ void readData()
       partNum++;
       break;
     case 3:
+      read_dir = receivedChar;
+      partNum++;
+      break;
+    case 4:
       if (receivedChar == 'B')
       {
         partNum = 0;
         angle = read_angle;
         speed = read_speed;
+        dir = read_dir;
 
         // Serial.print("Success angle:");
         // Serial.print(angle);
