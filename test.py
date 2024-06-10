@@ -1,7 +1,5 @@
 import serial
-import threading
 import time
-
 
 ser = serial.Serial('COM7', 57600)
 stop_thread = False

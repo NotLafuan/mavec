@@ -7,11 +7,14 @@ import serial
 cap = cv2.VideoCapture(0)
 ser = serial.Serial('/dev/ttyACM0', 56700)
 ratio = 0.5
-top_crop = 230
+top_crop = 300 # 230
 
 angle = 90
 speed = 0
 
+
+def lerp(a,b,t):
+    return a + (b - a) * t
 
 def send_data_normal():
     clamped_angle = int(np.clip(angle, 70, 110))
@@ -86,7 +89,7 @@ def four_point_transform(image, pts):
 def image_binary(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     blur = cv2.blur(gray, (5, 5))
-    ret, thresh1 = cv2.threshold(blur, 120, 255, cv2.THRESH_BINARY_INV)
+    ret, thresh1 = cv2.threshold(blur, 50, 255, cv2.THRESH_BINARY_INV)
 
     return thresh1
 
@@ -94,11 +97,12 @@ def image_binary(img):
 def map_value(x: float,  in_min: float,  in_max: float,  out_min: float,  out_max: float):
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
 
-
+elapsed_time = 0
 while True:
     start_time = time.time()
     ret, frame = cap.read()
     frame = cv2.flip(frame, 0)
+    frame = cv2.flip(frame, 1)
 
     height, width, channels = frame.shape
     pts = np.array([[(width/2)-(width/2)*ratio, top_crop],
@@ -119,33 +123,35 @@ while True:
     cog = np.sum(np.matmul(hist, dist))/np.sum(hist)
     if np.isnan(cog):
         cog = width/2
-#    fig, ax = plt.subplots()
-#    ax.plot(hist)
-#    fig.canvas.draw()
-#    img_plot = np.array(fig.canvas.renderer.buffer_rgba())
+    # fig, ax = plt.subplots()
+    # ax.plot(hist)
+    # fig.canvas.draw()
+    # img_plot = np.array(fig.canvas.renderer.buffer_rgba())
 
-#    cv2.imshow("histogram", cv2.cvtColor(img_plot, cv2.COLOR_RGBA2BGR))
+    # cv2.imshow("histogram", cv2.cvtColor(img_plot, cv2.COLOR_RGBA2BGR))
     steer = cv2.line(cv2.cvtColor(binary, cv2.COLOR_GRAY2BGR),
                      (int(cog), binary.shape[0]),
                      (int(cog), binary.shape[0]-10),
                      color=(0, 255, 0),
                      thickness=10)
     steer_amount = -(cog - (width / 2)) / width
-    angle = map_value(steer_amount, -0.4, 0.4, 70, 110)
+    calc_angle = map_value(steer_amount, -0.4, 0.4, 120, 60)
+    angle = lerp(angle, calc_angle, elapsed_time*2)
 
-    speed = map_value(abs(steer_amount), 0, 0.5, 120, 50)
+    speed = map_value(abs(steer_amount), 0, 0.5, 220, 120)
 
     send_data_normal()
 
-    cv2.imshow("frame", frame_vis)
-    cv2.imshow("warped", warped)
-    cv2.imshow("binary", binary)
-    cv2.imshow("steer", steer)
+#    cv2.imshow("frame", frame_vis)
+ #   cv2.imshow("warped", warped)
+  #  cv2.imshow("binary", binary)
+   # cv2.imshow("steer", steer)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
-
-    print(f'\rfps: {1/(time.time()-start_time):>6.2f} angle: {angle:>5.2f} speed: {speed:>6.2f}', end='')
+    
+    elapsed_time = time.time()-start_time
+    print(f'\rfps: {1/elapsed_time:>6.2f} _angle: {calc_angle:>5.2f} angle: {angle:>5.2f} speed: {speed:>6.2f}', end='')
 print()
 
 cv2.destroyAllWindows()
