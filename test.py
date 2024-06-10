@@ -1,7 +1,7 @@
 import serial
 import time
 
-ser = serial.Serial('COM7', 57600)
+ser = serial.Serial('/dev/ttyACM0', 57600)
 stop_thread = False
 
 # Define a function to be executed in a separate thread
