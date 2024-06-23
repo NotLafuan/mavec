@@ -7,6 +7,11 @@ from utils import *
 from threading import Thread
 
 cap = cv2.VideoCapture(0)
+print('Waiting for camera', end='')
+while not cap.isOpened():
+    time.sleep(.5)
+    print('.', end='')
+print()
 # ser = serial.Serial('/dev/ttyACM0', 56700)
 ratio = 0.5
 top_crop = 300  # 230
