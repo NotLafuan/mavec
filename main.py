@@ -5,27 +5,33 @@ import time
 import serial
 from utils import *
 from threading import Thread
+import os
+
+#os.environ["OPENCV_LOG_LEVEL"] = "1"
 
 cap = cv2.VideoCapture(0)
 print('Waiting for camera', end='')
 while not cap.isOpened():
-    time.sleep(.5)
-    print('.', end='')
+    cap = cv2.VideoCapture(0)
+    time.sleep(.1)
+    print('.', end='', flush=True)
 print()
-# ser = serial.Serial('/dev/ttyACM0', 56700)
-ratio = 0.5
-top_crop = 300  # 230
+ser = serial.Serial('/dev/ttyACM0', 56700)
+ratio = 0.3
+top_crop = 330  # 230
 
 angle = 90
 speed = 0
+angle_pid = PID(kp=0.4, ki=0, kd=0.25)
 
 
 def send_data_normal():
-    clamped_angle = int(np.clip(angle, 70, 110))
+    clamped_angle = int(np.clip(angle, 50, 130))
     clamped_speed = int(np.clip(speed, 0, 255))
+    direction = 0
     data = b'\x00'*5+b'A' + \
-        clamped_angle.to_bytes(1, 'big')+clamped_speed.to_bytes(1, 'big')+b'B'
-    # ser.write(data)
+        clamped_angle.to_bytes(1, 'little')+clamped_speed.to_bytes(1, 'little')+direction.to_bytes(1, 'little')+b'B'
+    ser.write(data)
 
 
 def gen_frame_vis():
@@ -87,14 +93,19 @@ server.daemon = True
 server.start()
 
 while True:
-    global frame
     try:
         start_time = time.time()
         ret, frame = cap.read()
         frame = cv2.flip(frame, 0)
         frame = cv2.flip(frame, 1)
-
         height, width, channels = frame.shape
+
+        blank_image = np.zeros((height,width+300,3), np.uint8)
+        blank_image.fill(255)
+        blank_image[0:height,150:width+150] = frame
+        frame = blank_image
+        height, width, channels = blank_image.shape
+
         pts = np.array([[(width/2)-(width/2)*ratio, top_crop],
                         [(width/2)+(width/2)*ratio, top_crop],
                         [width, height],
@@ -104,7 +115,7 @@ while True:
         cv2.polylines(frame_vis, [pts], isClosed=True,
                       color=(0, 0, 125), thickness=3)
 
-        warped = four_point_transform(frame_vis, pts)
+        warped = four_point_transform(frame, pts)
 
         binary = image_binary(warped)
 
@@ -124,11 +135,14 @@ while True:
                          (int(cog), binary.shape[0]-10),
                          color=(0, 255, 0),
                          thickness=10)
-        steer_amount = -(cog - (width / 2)) / width
-        calc_angle = map_value(steer_amount, -0.4, 0.4, 120, 60)
-        angle = lerp(angle, calc_angle, elapsed_time*2)
+        error = -(cog - (width / 2)) / width
 
-        speed = map_value(abs(steer_amount), 0, 0.5, 220, 120)
+        angle_pid.value = -error
+
+        calc_angle = map_value(angle_pid.total, -0.4, 0.4, 140+2, 40+2)
+        angle = lerp(angle, calc_angle, elapsed_time*3)
+
+        speed = map_value(abs(error), 0, 0.4, 30, 13)
 
         send_data_normal()
 
@@ -146,6 +160,9 @@ while True:
         print(f'angle: {angle:>5.2f}', end=' ')
         print(f'speed: {speed:>6.2f}', end=' ',)
     except KeyboardInterrupt:
+        angle = 90
+        speed = 0
+        send_data_normal()
         break
 print()
 
