@@ -12,9 +12,18 @@ def move(angle: int, speed: int, dir: int):
     ser.write(data)
 
 if __name__ == '__main__':
+    move(93, 15, 0)
+    time.sleep(1.6)
+    move(95, 15, 0)
+    time.sleep(1.8)
+    move(120, 15, 0)
+    time.sleep(1.4)
+    move(93, 15, 0)
+    time.sleep(0.8)
+    move(120, 15, 0)
+    time.sleep(1.2)
     move(93, 15, 1)
-    time.sleep(2)
-    move(95, 15, 1)
-    time.sleep(2)
-    move(90, 0, 0)
+    time.sleep(0.5)
+    move(90, 0, 1)
+
 ser.close()
