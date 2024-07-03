@@ -7,7 +7,7 @@ from utils import *
 from threading import Thread
 import os
 
-#os.environ["OPENCV_LOG_LEVEL"] = "1"
+# os.environ["OPENCV_LOG_LEVEL"] = "1"
 
 cap = cv2.VideoCapture(0)
 print('Waiting for camera', end='')
@@ -30,7 +30,9 @@ def send_data_normal():
     clamped_speed = int(np.clip(speed, 0, 255))
     direction = 0
     data = b'\x00'*5+b'A' + \
-        clamped_angle.to_bytes(1, 'little')+clamped_speed.to_bytes(1, 'little')+direction.to_bytes(1, 'little')+b'B'
+        clamped_angle.to_bytes(1, 'little') +\
+        clamped_speed.to_bytes(1, 'little') + \
+        direction.to_bytes(1, 'little')+b'B'
     ser.write(data)
 
 
@@ -47,6 +49,7 @@ def route_frame_vis():
     return Response(gen_frame_vis(),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
+
 def gen_warped():
     global warped
     while True:
@@ -60,6 +63,7 @@ def route_warped():
     return Response(gen_warped(),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
+
 def gen_binary():
     global binary
     while True:
@@ -72,6 +76,7 @@ def gen_binary():
 def route_binary():
     return Response(gen_binary(),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
+
 
 def gen_steer():
     global steer
@@ -100,9 +105,9 @@ while True:
         frame = cv2.flip(frame, 1)
         height, width, channels = frame.shape
 
-        blank_image = np.zeros((height,width+300,3), np.uint8)
+        blank_image = np.zeros((height, width+300, 3), np.uint8)
         blank_image.fill(255)
-        blank_image[0:height,150:width+150] = frame
+        blank_image[0:height, 150:width+150] = frame
         frame = blank_image
         height, width, channels = blank_image.shape
 
@@ -146,10 +151,10 @@ while True:
 
         send_data_normal()
 
-    #    cv2.imshow("frame", frame_vis)
-    #    cv2.imshow("warped", warped)
-    #    cv2.imshow("binary", binary)
-    #    cv2.imshow("steer", steer)
+        # cv2.imshow("frame", frame_vis)
+        # cv2.imshow("warped", warped)
+        # cv2.imshow("binary", binary)
+        # cv2.imshow("steer", steer)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break

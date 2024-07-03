@@ -36,7 +36,10 @@ print('start')
 # ser.write(angle.to_bytes(1))
 # ser.write(speed.to_bytes(1))
 # ser.write(b'B')
-data = b'\x00'*5+b'A'+angle.to_bytes(1, 'big')+speed.to_bytes(1, 'big')+direction.to_bytes(1, 'big')+b'B'
+data = b'\x00'*5+b'A' + \
+    angle.to_bytes(1, 'big') +\
+    speed.to_bytes(1, 'big') + \
+    direction.to_bytes(1, 'big')+b'B'
 ser.write(data)
 time.sleep(0.5)
 print('finished')

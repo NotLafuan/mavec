@@ -11,6 +11,7 @@ def move(angle: int, speed: int, dir: int):
         dir.to_bytes(1, 'big')+b'B'
     ser.write(data)
 
+
 if __name__ == '__main__':
     move(93, 15, 0)
     time.sleep(1.6)
