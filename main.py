@@ -6,16 +6,17 @@ import serial
 from utils import *
 from threading import Thread
 import os
+from picamera2 import Picamera2
 
 # os.environ["OPENCV_LOG_LEVEL"] = "1"
 
-cap = cv2.VideoCapture(0)
-print('Waiting for camera', end='')
-while not cap.isOpened():
-    cap = cv2.VideoCapture(0)
-    time.sleep(.1)
-    print('.', end='', flush=True)
-print()
+# cap = cv2.VideoCapture(0)
+# print('Waiting for camera', end='')
+# while not cap.isOpened():
+#     cap = cv2.VideoCapture(0)
+#     time.sleep(.1)
+#     print('.', end='', flush=True)
+# print()
 ser = serial.Serial('/dev/ttyACM0', 56700)
 ratio = 0.3
 top_crop = 330  # 230
@@ -97,15 +98,20 @@ server = Thread(target=flask_app)
 server.daemon = True
 server.start()
 
+
+picam2 = Picamera2()
+picam2.start()
+
 while True:
     try:
         start_time = time.time()
-        ret, frame = cap.read()
+        # ret, frame = cap.read()
+        frame = picam2.capture_array()
         frame = cv2.flip(frame, 0)
         frame = cv2.flip(frame, 1)
         height, width, channels = frame.shape
 
-        blank_image = np.zeros((height, width+300, 3), np.uint8)
+        blank_image = np.zeros((height, width+300, 4), np.uint8)
         blank_image.fill(255)
         blank_image[0:height, 150:width+150] = frame
         frame = blank_image
@@ -172,4 +178,4 @@ while True:
 print()
 
 cv2.destroyAllWindows()
-cap.release()
+# cap.release()
