@@ -70,6 +70,6 @@ def four_point_transform(image, pts):
 def image_binary(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     blur = cv2.blur(gray, (5, 5))
-    ret, thresh1 = cv2.threshold(blur, 50, 255, cv2.THRESH_BINARY_INV)
+    ret, thresh1 = cv2.threshold(blur,  50, 255, cv2.THRESH_BINARY_INV)
 
     return thresh1
