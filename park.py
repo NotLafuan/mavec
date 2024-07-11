@@ -13,20 +13,23 @@ def move(angle: int, speed: int, dir: int):
 
 
 if __name__ == '__main__':
-    move(93, 20, 0)
-    time.sleep(2.8)
-    move(90, 0, 0)
-    time.sleep(1)
-    move(70, 20, 1)
-    time.sleep(2)
-    move(90, 20, 1)
-    time.sleep(0.4)
-    move(120, 20, 1)
-    time.sleep(.7)
-    move(70, 20, 0)
-    time.sleep(1)
-    move(90, 20, 1)
-    time.sleep(0.5)
-    move(90, 0, 1)
+    try:
+        move(94, 15, 0)
+        time.sleep(2.8)
+        move(90, 0, 0)
+        time.sleep(1)
+        move(70, 15, 1)
+        time.sleep(2)
+        move(90, 15, 1)
+        time.sleep(0.4)
+        move(120, 15, 1)
+        time.sleep(.7)
+        move(70, 15, 0)
+        time.sleep(1)
+        move(90, 15, 1)
+        time.sleep(0.5)
+        move(90, 0, 1)
+    except KeyboardInterrupt:
+        move(90, 0, 1)
 
 ser.close()
