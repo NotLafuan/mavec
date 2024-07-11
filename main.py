@@ -159,13 +159,20 @@ while True:
         angle = lerp(angle, calc_angle, elapsed_time*3)
 
         speed = map_value(abs(error), 0, 0.4, 25, 13)
+
+        # steepness compensation
         if orientation['roll'] > 180:
             steepness = orientation['roll'] - 360
         else:
             steepness = orientation['roll']
         steepness = steepness/22
         speed = speed + (speed*-steepness*1)
-        # angle = 90
+
+        if abs(steepness) < 1:
+            angle = (1-abs(steepness))*angle + (abs(steepness))*90
+        else:
+            angle = 90
+
         send_data_normal()
 
         # cv2.imshow("frame", frame_vis)
@@ -178,9 +185,10 @@ while True:
 
         elapsed_time = time.time()-start_time
         print(f'\rfps: {1/elapsed_time:>6.2f}', end=' ')
-        print(f'_angle: {calc_angle:>5.2f}', end=' ')
-        print(f'angle: {angle:>5.2f}', end=' ')
+        print(f'_angle: {calc_angle:>6.2f}', end=' ')
+        print(f'angle: {angle:>6.2f}', end=' ')
         print(f'speed: {speed:>6.2f}', end=' ',)
+        print(f'steepness: {steepness:>6.2f}', end=' ',)
     except KeyboardInterrupt:
         angle = 90
         speed = 0
