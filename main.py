@@ -7,6 +7,9 @@ from utils import *
 from threading import Thread
 import os
 from picamera2 import Picamera2
+from sense_hat import SenseHat
+
+sense = SenseHat()
 
 # os.environ["OPENCV_LOG_LEVEL"] = "1"
 
@@ -18,18 +21,19 @@ from picamera2 import Picamera2
 #     print('.', end='', flush=True)
 # print()
 ser = serial.Serial('/dev/ttyACM0', 56700)
-ratio = 0.3
-top_crop = 330  # 230
+ratio = 0.5
+top_crop = 370  # 230
 
 angle = 90
 speed = 0
-angle_pid = PID(kp=0.4, ki=0, kd=0.25)
+angle_pid = PID(kp=0.6, ki=0, kd=0.25)
 
 
 def send_data_normal():
-    clamped_angle = int(np.clip(angle, 50, 130))
+    clamped_angle = int(np.clip(angle, 40, 140))
     clamped_speed = int(np.clip(speed, 0, 255))
     direction = 0
+    # clamped_speed=0
     data = b'\x00'*5+b'A' + \
         clamped_angle.to_bytes(1, 'little') +\
         clamped_speed.to_bytes(1, 'little') + \
@@ -105,6 +109,8 @@ picam2.start()
 while True:
     try:
         start_time = time.time()
+        acceleration = sense.get_accelerometer_raw()
+        steepness = -acceleration['y']
         # ret, frame = cap.read()
         frame = picam2.capture_array()
         frame = cv2.flip(frame, 0)
@@ -153,8 +159,9 @@ while True:
         calc_angle = map_value(angle_pid.total, -0.4, 0.4, 140+2, 40+2)
         angle = lerp(angle, calc_angle, elapsed_time*3)
 
-        speed = map_value(abs(error), 0, 0.4, 30, 13)
-
+        speed = map_value(abs(error), 0, 0.4, 25, 13)
+        # speed = speed + (speed*steepness*10)
+        # angle = 90
         send_data_normal()
 
         # cv2.imshow("frame", frame_vis)
