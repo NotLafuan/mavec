@@ -109,8 +109,7 @@ picam2.start()
 while True:
     try:
         start_time = time.time()
-        acceleration = sense.get_accelerometer_raw()
-        steepness = -acceleration['y']
+        orientation = sense.get_orientation()
         # ret, frame = cap.read()
         frame = picam2.capture_array()
         frame = cv2.flip(frame, 0)
@@ -160,7 +159,12 @@ while True:
         angle = lerp(angle, calc_angle, elapsed_time*3)
 
         speed = map_value(abs(error), 0, 0.4, 25, 13)
-        # speed = speed + (speed*steepness*10)
+        if orientation['roll'] > 180:
+            steepness = orientation['roll'] - 360
+        else:
+            steepness = orientation['roll']
+        steepness = steepness/22
+        speed = speed + (speed*-steepness*1)
         # angle = 90
         send_data_normal()
 
