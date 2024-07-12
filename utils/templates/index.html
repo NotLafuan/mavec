@@ -5,11 +5,18 @@
   <title>Video Stream</title>
 </head>
 
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='styles/mainpage.css') }}">
+
+
 <body>
-  <img src="{{ url_for('route_frame_vis') }}" />
-  <img src="{{ url_for('route_warped') }}" />
-  <!-- <img src="{{ url_for('route_binary') }}" /> -->
-  <img src="{{ url_for('route_steer') }}" />
+  <div class="column">
+    <img src="{{ url_for('route_frame_vis') }}" />
+  </div>
+  <div class="column">
+    <img src="{{ url_for('route_warped') }}" />
+    <!-- <img src="{{ url_for('route_binary') }}" /> -->
+    <img src="{{ url_for('route_steer') }}" />
+  </div>
 </body>
 
 </html>
