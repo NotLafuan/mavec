@@ -45,59 +45,51 @@ def send_data_normal():
     ser.write(data)
 
 
-def gen_frame_vis():
-    global frame_vis
-    while True:
-        ret, jpeg = cv2.imencode(
-            '.jpg', cv2.cvtColor(frame_vis, cv2.COLOR_BGR2RGB))
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
-
-
 @app.route('/route_frame_vis')
 def route_frame_vis():
+    def gen_frame_vis():
+        global frame_vis
+        while True:
+            ret, jpeg = cv2.imencode(
+                '.jpg', cv2.cvtColor(frame_vis, cv2.COLOR_BGR2RGB))
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
     return Response(gen_frame_vis(),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
-def gen_warped():
-    global warped
-    while True:
-        ret, jpeg = cv2.imencode('.jpg', warped)
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
-
-
 @app.route('/route_warped')
 def route_warped():
+    def gen_warped():
+        global warped
+        while True:
+            ret, jpeg = cv2.imencode('.jpg', warped)
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
     return Response(gen_warped(),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
-def gen_binary():
-    global binary
-    while True:
-        ret, jpeg = cv2.imencode('.jpg', binary)
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
-
-
 @app.route('/route_binary')
 def route_binary():
+    def gen_binary():
+        global binary
+        while True:
+            ret, jpeg = cv2.imencode('.jpg', binary)
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
     return Response(gen_binary(),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
-def gen_steer():
-    global steer
-    while True:
-        ret, jpeg = cv2.imencode('.jpg', steer)
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
-
-
 @app.route('/route_steer')
 def route_steer():
+    def gen_steer():
+        global steer
+        while True:
+            ret, jpeg = cv2.imencode('.jpg', steer)
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
     return Response(gen_steer(),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
@@ -135,6 +127,8 @@ while True:
         frame_vis = frame.copy()
         cv2.polylines(frame_vis, [pts], isClosed=True,
                       color=(0, 0, 125), thickness=3)
+
+        cv2.rectangle(frame_vis, (690, 70), (690+70, 70+170), (0, 0, 125), 2)
 
         warped = four_point_transform(frame, pts)
 
