@@ -21,19 +21,23 @@ sense = SenseHat()
 #     print('.', end='', flush=True)
 # print()
 ser = serial.Serial('/dev/ttyACM0', 56700)
-ratio = 0.5
-top_crop = 370  # 230
+ratio = 1
+top_crop = 400  # 230
 
 angle = 90
 speed = 0
-angle_pid = PID(kp=0.6, ki=0, kd=0.25)
+angle_pid = PID(kp=0.3, ki=0.0, kd=0.2)
+
+max_angle = 90+60+2
+min_angle = 90-60+2
+max_screen_angle = 0.2
 
 
 def send_data_normal():
-    clamped_angle = int(np.clip(angle, 40, 140))
+    clamped_angle = int(np.clip(angle, min_angle, max_angle))
     clamped_speed = int(np.clip(speed, 0, 255))
     direction = 0
-    # clamped_speed=0
+    clamped_speed = 0
     data = b'\x00'*5+b'A' + \
         clamped_angle.to_bytes(1, 'little') +\
         clamped_speed.to_bytes(1, 'little') + \
@@ -44,7 +48,8 @@ def send_data_normal():
 def gen_frame_vis():
     global frame_vis
     while True:
-        ret, jpeg = cv2.imencode('.jpg', frame_vis)
+        ret, jpeg = cv2.imencode(
+            '.jpg', cv2.cvtColor(frame_vis, cv2.COLOR_BGR2RGB))
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
 
@@ -155,10 +160,12 @@ while True:
 
         angle_pid.value = -error
 
-        calc_angle = map_value(angle_pid.total, -0.4, 0.4, 140+2, 40+2)
+        calc_angle = map_value(angle_pid.total,
+                               -max_screen_angle, max_screen_angle,
+                               max_angle, min_angle)
         angle = lerp(angle, calc_angle, elapsed_time*3)
 
-        speed = map_value(abs(error), 0, 0.4, 25, 13)
+        speed = map_value(abs(error), 0, max_screen_angle, 20, 13)
 
         # steepness compensation
         if orientation['roll'] > 180:
@@ -166,7 +173,7 @@ while True:
         else:
             steepness = orientation['roll']
         steepness = steepness/22
-        speed = speed + (speed*-steepness*1)
+        speed = speed + (speed*-steepness*3)
 
         if abs(steepness) < 1:
             angle = (1-abs(steepness))*angle + (abs(steepness))*90
