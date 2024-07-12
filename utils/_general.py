@@ -10,9 +10,9 @@ class Position:
 
 @dataclass
 class PID:
-    kp: float
-    ki: float
-    kd: float
+    kp: float = 0
+    ki: float = 0
+    kd: float = 0
     value: float = 0
     target: float = 0
     _i: float = 0
