@@ -26,7 +26,9 @@ top_crop = 400  # 230
 
 angle = 90
 speed = 0
-angle_pid = PID(kp=0.3, ki=0.0, kd=0.2)
+angle_pid = PID(kp=0.3,
+                # ki=0.005,
+                kd=0.2)
 
 max_angle = 90+60+2
 min_angle = 90-60+2
@@ -94,6 +96,42 @@ def route_steer():
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
+@app.route('/route_traffic')
+def route_traffic():
+    def gen_traffic():
+        global traffic
+        while True:
+            ret, jpeg = cv2.imencode(
+                '.jpg', cv2.cvtColor(traffic, cv2.COLOR_BGR2RGB))
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
+    return Response(gen_traffic(),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
+
+
+@app.route('/route_traffic_max')
+def route_traffic_max():
+    def gen_traffic_max():
+        global traffic_max
+        while True:
+            ret, jpeg = cv2.imencode('.jpg', traffic_max)
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
+    return Response(gen_traffic_max(),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
+
+
+@app.route('/data')
+def route_data():
+    global angle
+    global traffic
+    B = traffic[:, :, 0]
+    G = traffic[:, :, 1]
+    R = traffic[:, :, 2]
+    return jsonify({'angle': angle,
+                    'traffic': [np.mean(R), np.mean(G), np.mean(B)]})
+
+
 elapsed_time = 0
 server = Thread(target=flask_app)
 server.daemon = True
@@ -145,6 +183,7 @@ while True:
         # img_plot = np.array(fig.canvas.renderer.buffer_rgba())
 
         # cv2.imshow("histogram", cv2.cvtColor(img_plot, cv2.COLOR_RGBA2BGR))
+
         steer = cv2.line(cv2.cvtColor(binary, cv2.COLOR_GRAY2BGR),
                          (int(cog), binary.shape[0]),
                          (int(cog), binary.shape[0]-10),
@@ -154,10 +193,10 @@ while True:
 
         angle_pid.value = -error
 
-        calc_angle = map_value(angle_pid.total,
-                               -max_screen_angle, max_screen_angle,
-                               max_angle, min_angle)
-        angle = lerp(angle, calc_angle, elapsed_time*3)
+        angle = map_value(angle_pid.total,
+                          -max_screen_angle, max_screen_angle,
+                          max_angle, min_angle)
+        # angle = lerp(angle, calc_angle, elapsed_time*3)
 
         speed = map_value(abs(error), 0, max_screen_angle, 20, 13)
 
@@ -180,13 +219,40 @@ while True:
         # cv2.imshow("warped", warped)
         # cv2.imshow("binary", binary)
         # cv2.imshow("steer", steer)
+        traffic = frame[70:70+170, 690:690+70]
+        # traffic_gray = cv2.cvtColor(traffic, cv2.COLOR_BGR2GRAY)
+        traffic_gray = cv2.bitwise_not(image_binary(traffic))
+        contours, hierarchy = cv2.findContours(
+            traffic_gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        maxContour = 0
+        for contour in contours:
+            contourSize = cv2.contourArea(contour)
+            if contourSize > maxContour:
+                maxContour = contourSize
+                maxContourData = contour
+        mask = np.zeros_like(traffic_gray)
+        cv2.fillPoly(mask, [maxContourData], 1)
+        traffic_gray = np.multiply(traffic_gray, mask)
+
+        traffic_hist = np.sum(traffic_gray, axis=1)
+        traffic_dist = np.array(range(len(traffic_hist)))
+        traffic_cog = np.sum(
+            np.matmul(traffic_hist, traffic_dist))/np.sum(traffic_hist)
+        if np.isnan(traffic_cog):
+            traffic_cog = width/2
+
+        traffic_max = cv2.line(cv2.cvtColor(traffic_gray, cv2.COLOR_GRAY2BGR),
+                               (traffic_gray.shape[1], int(traffic_cog)),
+                               (traffic_gray.shape[1]-10, int(traffic_cog)),
+                               color=(0, 255, 0),
+                               thickness=10)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
         elapsed_time = time.time()-start_time
         print(f'\rfps: {1/elapsed_time:>6.2f}', end=' ')
-        print(f'_angle: {calc_angle:>6.2f}', end=' ')
+        # print(f'_angle: {calc_angle:>6.2f}', end=' ')
         print(f'angle: {angle:>6.2f}', end=' ')
         print(f'speed: {speed:>6.2f}', end=' ',)
         print(f'steepness: {steepness:>6.2f}', end=' ',)
@@ -194,8 +260,8 @@ while True:
         angle = 90
         speed = 0
         send_data_normal()
+        cv2.destroyAllWindows()
         break
 print()
 
-cv2.destroyAllWindows()
 # cap.release()

@@ -6,16 +6,36 @@
 </head>
 
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='styles/mainpage.css') }}">
+<script>
+  function fetchValue() {
+    fetch('/data')
+      .then(response => response.json())
+      .then(data => {
+        document.getElementById('angle').textContent = data["angle"].toFixed(2);
+        document.getElementById('R').textContent = data["traffic"][0].toFixed(2);
+        document.getElementById('G').textContent = data["traffic"][1].toFixed(2);
+        document.getElementById('B').textContent = data["traffic"][2].toFixed(2);
+      });
+  }
+
+  // Fetch the value every second
+  setInterval(fetchValue, 100);
+</script>
 
 
 <body>
   <div class="column">
     <img src="{{ url_for('route_frame_vis') }}" />
+    <div class="column"><img src="{{ url_for('route_traffic') }}" />
+    <img src="{{ url_for('route_traffic_max') }}"/></div>
+
   </div>
   <div class="column">
     <img src="{{ url_for('route_warped') }}" />
     <!-- <img src="{{ url_for('route_binary') }}" /> -->
     <img src="{{ url_for('route_steer') }}" />
+    <h1>The angle is: <span id="angle">0</span></h1>
+    <h1>R: <span id="R">0</span> G: <span id="G">0</span> B: <span id="B">0</span></h1>
   </div>
 </body>
 
