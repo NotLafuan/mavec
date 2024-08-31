@@ -22,29 +22,31 @@ sense = SenseHat()
 # print()
 ser = serial.Serial('/dev/ttyACM0', 56700)
 ratio = 1
-top_crop = 400  # 230
+top_crop = 200  # 230
 
 angle = 90
 speed = 0
-angle_pid = PID(kp=0.3,
+angle_pid = PID(kp=1.2,
                 # ki=0.005,
-                kd=0.2)
+                kd=0.0)
 
 max_angle = 90+60+2
 min_angle = 90-60+2
-max_screen_angle = 0.2
+max_screen_angle = 0.4
+
+max_speed = 20
 
 
 def send_data_normal():
     clamped_angle = int(np.clip(angle, min_angle, max_angle))
     clamped_speed = int(np.clip(speed, 0, 255))
     direction = 0
-    clamped_speed = 0
+    # clamped_speed = 0
     data = b'\x00'*5+b'A' + \
         clamped_angle.to_bytes(1, 'little') +\
         clamped_speed.to_bytes(1, 'little') + \
         direction.to_bytes(1, 'little')+b'B'
-    ser.write(data)
+    # ser.write(data)
 
 
 @app.route('/route_frame_vis')
@@ -109,27 +111,27 @@ def route_traffic():
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
-@app.route('/route_traffic_max')
-def route_traffic_max():
-    def gen_traffic_max():
-        global traffic_max
-        while True:
-            ret, jpeg = cv2.imencode('.jpg', traffic_max)
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
-    return Response(gen_traffic_max(),
-                    mimetype='multipart/x-mixed-replace; boundary=frame')
+# @app.route('/route_traffic_max')
+# def route_traffic_max():
+#     def gen_traffic_max():
+#         global traffic_max
+#         while True:
+#             ret, jpeg = cv2.imencode('.jpg', traffic_max)
+#             yield (b'--frame\r\n'
+#                    b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
+#     return Response(gen_traffic_max(),
+#                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
-@app.route('/data')
-def route_data():
-    global angle
-    global traffic
-    B = traffic[:, :, 0]
-    G = traffic[:, :, 1]
-    R = traffic[:, :, 2]
-    return jsonify({'angle': angle,
-                    'traffic': [np.mean(R), np.mean(G), np.mean(B)]})
+# @app.route('/data')
+# def route_data():
+#     global angle
+#     global traffic
+#     B = traffic[:, :, 0]
+#     G = traffic[:, :, 1]
+#     R = traffic[:, :, 2]
+#     return jsonify({'angle': angle,
+#                     'traffic': [np.mean(R), np.mean(G), np.mean(B)]})
 
 
 elapsed_time = 0
@@ -139,6 +141,9 @@ server.start()
 
 
 picam2 = Picamera2()
+controls = {"ExposureTime": 30_000, "AnalogueGain": 3.0}
+preview_config = picam2.create_preview_configuration(controls=controls)
+picam2.configure(preview_config)
 picam2.start()
 
 while True:
@@ -157,10 +162,16 @@ while True:
         frame = blank_image
         height, width, channels = blank_image.shape
 
-        pts = np.array([[(width/2)-(width/2)*ratio, top_crop],
-                        [(width/2)+(width/2)*ratio, top_crop],
+        # pts = np.array([[(width/2)-(width/2)*ratio, top_crop],
+        #                 [(width/2)+(width/2)*ratio, top_crop],
+        #                 [width, height],
+        #                 [0, height]], np.int32)
+
+        pts = np.array([[0, 0],
+                        [width, 0],
                         [width, height],
                         [0, height]], np.int32)
+
 
         frame_vis = frame.copy()
         cv2.polylines(frame_vis, [pts], isClosed=True,
@@ -193,12 +204,12 @@ while True:
 
         angle_pid.value = -error
 
-        angle = map_value(angle_pid.total,
-                          -max_screen_angle, max_screen_angle,
-                          max_angle, min_angle)
-        # angle = lerp(angle, calc_angle, elapsed_time*3)
+        calc_angle = map_value(angle_pid.total,
+                               -max_screen_angle, max_screen_angle,
+                               max_angle, min_angle)
+        angle = lerp(angle, calc_angle, elapsed_time*10)
 
-        speed = map_value(abs(error), 0, max_screen_angle, 20, 13)
+        speed = map_value(abs(error), 0, max_screen_angle, max_speed, 13)
 
         # steepness compensation
         if orientation['roll'] > 180:
@@ -209,6 +220,8 @@ while True:
         speed = speed + (speed*-steepness*3)
 
         if abs(steepness) < 1:
+            if abs(steepness) < 0.4:
+                speed = np.clip(speed, 0, max_speed)
             angle = (1-abs(steepness))*angle + (abs(steepness))*90
         else:
             angle = 90
@@ -219,33 +232,33 @@ while True:
         # cv2.imshow("warped", warped)
         # cv2.imshow("binary", binary)
         # cv2.imshow("steer", steer)
-        traffic = frame[70:70+170, 690:690+70]
-        # traffic_gray = cv2.cvtColor(traffic, cv2.COLOR_BGR2GRAY)
-        traffic_gray = cv2.bitwise_not(image_binary(traffic))
-        contours, hierarchy = cv2.findContours(
-            traffic_gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-        maxContour = 0
-        for contour in contours:
-            contourSize = cv2.contourArea(contour)
-            if contourSize > maxContour:
-                maxContour = contourSize
-                maxContourData = contour
-        mask = np.zeros_like(traffic_gray)
-        cv2.fillPoly(mask, [maxContourData], 1)
-        traffic_gray = np.multiply(traffic_gray, mask)
+        # traffic = frame[70:70+170, 690:690+70]
+        # # traffic_gray = cv2.cvtColor(traffic, cv2.COLOR_BGR2GRAY)
+        # traffic_gray = cv2.bitwise_not(image_binary(traffic))
+        # contours, hierarchy = cv2.findContours(
+        #     traffic_gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        # maxContour = 0
+        # for contour in contours:
+        #     contourSize = cv2.contourArea(contour)
+        #     if contourSize > maxContour:
+        #         maxContour = contourSize
+        #         maxContourData = contour
+        # mask = np.zeros_like(traffic_gray)
+        # cv2.fillPoly(mask, [maxContourData], 1)
+        # traffic_gray = np.multiply(traffic_gray, mask)
 
-        traffic_hist = np.sum(traffic_gray, axis=1)
-        traffic_dist = np.array(range(len(traffic_hist)))
-        traffic_cog = np.sum(
-            np.matmul(traffic_hist, traffic_dist))/np.sum(traffic_hist)
-        if np.isnan(traffic_cog):
-            traffic_cog = width/2
+        # traffic_hist = np.sum(traffic_gray, axis=1)
+        # traffic_dist = np.array(range(len(traffic_hist)))
+        # traffic_cog = np.sum(
+        #     np.matmul(traffic_hist, traffic_dist))/np.sum(traffic_hist)
+        # if np.isnan(traffic_cog):
+        #     traffic_cog = width/2
 
-        traffic_max = cv2.line(cv2.cvtColor(traffic_gray, cv2.COLOR_GRAY2BGR),
-                               (traffic_gray.shape[1], int(traffic_cog)),
-                               (traffic_gray.shape[1]-10, int(traffic_cog)),
-                               color=(0, 255, 0),
-                               thickness=10)
+        # traffic_max = cv2.line(cv2.cvtColor(traffic_gray, cv2.COLOR_GRAY2BGR),
+        #                        (traffic_gray.shape[1], int(traffic_cog)),
+        #                        (traffic_gray.shape[1]-10, int(traffic_cog)),
+        #                        color=(0, 255, 0),
+        #                        thickness=10)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break

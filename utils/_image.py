@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 
+
 def order_points(pts):
     # initialzie a list of coordinates that will be ordered
     # such that the first entry in the list is the top-left,
@@ -11,15 +12,15 @@ def order_points(pts):
     # the top-left point will have the smallest sum, whereas
     # the bottom-right point will have the largest sum
     s = pts.sum(axis=1)
-    #rect[0] = pts[np.argmin(s)]
-    #rect[2] = pts[np.argmax(s)]
+    # rect[0] = pts[np.argmin(s)]
+    # rect[2] = pts[np.argmax(s)]
 
     # now, compute the difference between the points, the
     # top-right point will have the smallest difference,
     # whereas the bottom-left will have the largest difference
     diff = np.diff(pts, axis=1)
-    #rect[1] = pts[np.argmin(diff)]
-    #rect[3] = pts[np.argmax(diff)]
+    # rect[1] = pts[np.argmin(diff)]
+    # rect[3] = pts[np.argmax(diff)]
 
     # return the ordered coordinates
     rect[0] = pts[0]
@@ -67,9 +68,44 @@ def four_point_transform(image, pts):
     return warped
 
 
+def scale_contour(cnts, scale):
+    new_cnts = []
+    for cnt in cnts:
+        M = cv2.moments(cnt)
+        try:
+            cx = int(M['m10']/M['m00'])
+        except ZeroDivisionError:
+            cx = 0
+        try:
+            cy = int(M['m01']/M['m00'])
+        except ZeroDivisionError:
+            cy = 0
+
+        cnt_norm = cnt - [cx, cy]
+        cnt_scaled = cnt_norm * scale
+        cnt_scaled = cnt_scaled + [cx, cy]
+        cnt_scaled = cnt_scaled.astype(np.int32)
+        new_cnts.append(cnt_scaled)
+    return new_cnts
+
+
 def image_binary(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    blur = cv2.blur(gray, (5, 5))
+    blur = cv2.blur(gray, (10, 10))
     ret, thresh1 = cv2.threshold(blur,  70, 255, cv2.THRESH_BINARY_INV)
+    edge = cv2.Canny(thresh1, 100, 200, 3)
+    contours, hierarchy = cv2.findContours(edge,
+                                           cv2.RETR_TREE,
+                                           cv2.CHAIN_APPROX_SIMPLE)
+    scale_cnts = scale_contour(contours, 20)
+
+    # thresh1 = cv2.cvtColor(thresh1, cv2.COLOR_GRAY2BGR)
+    for contour, scale_cnt in zip(contours, scale_cnts):
+        mask = np.zeros_like(thresh1)
+        cv2.fillPoly(mask, pts=[scale_cnt], color=255)
+        cv2.fillPoly(mask, pts=[contour], color=0)
+        average = cv2.mean(thresh1, mask=mask)[0]
+        color = 0 if average < 255/2 else 255
+        cv2.fillPoly(thresh1, pts=[contour], color=int(color))
 
     return thresh1
