@@ -93,19 +93,14 @@ def image_binary(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     blur = cv2.blur(gray, (10, 10))
     ret, thresh1 = cv2.threshold(blur,  70, 255, cv2.THRESH_BINARY_INV)
-    edge = cv2.Canny(thresh1, 100, 200, 3)
-    contours, hierarchy = cv2.findContours(edge,
-                                           cv2.RETR_TREE,
-                                           cv2.CHAIN_APPROX_SIMPLE)
-    scale_cnts = scale_contour(contours, 20)
+    contours, hierarchy = cv2.findContours(image=thresh1,
+                                           mode=cv2.RETR_TREE,
+                                           method=cv2.CHAIN_APPROX_SIMPLE)
+    try:
+        new_image = np.zeros_like(thresh1)
+        areas = [cv2.contourArea(contour) for contour in contours]
+        cv2.fillPoly(new_image, [contours[np.argmax(areas)]], (255))
 
-    # thresh1 = cv2.cvtColor(thresh1, cv2.COLOR_GRAY2BGR)
-    for contour, scale_cnt in zip(contours, scale_cnts):
-        mask = np.zeros_like(thresh1)
-        cv2.fillPoly(mask, pts=[scale_cnt], color=255)
-        cv2.fillPoly(mask, pts=[contour], color=0)
-        average = cv2.mean(thresh1, mask=mask)[0]
-        color = 0 if average < 255/2 else 255
-        cv2.fillPoly(thresh1, pts=[contour], color=int(color))
-
-    return thresh1
+        return new_image
+    except ValueError:
+        return thresh1
